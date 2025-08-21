@@ -11,6 +11,7 @@
 
 #include "utils/utils.hpp"
 #include "robocup_vision/msg/bounding_box.hpp"
+#include "robocup_vision/msg/pan_tilt_msgs.hpp"
 #include "robocup_vision/msg/pan_tilt.hpp"
 
 #include "humanoid_interfaces/msg/master2vision25.hpp"
@@ -117,18 +118,20 @@ private:
   // ===== ROS 통신 =====
   rclcpp::Subscription<sensor_msgs::msg::CameraInfo>::SharedPtr camera_info_sub_;
   rclcpp::Subscription<robocup_vision::msg::BoundingBox>::SharedPtr bbox_sub_;
-  rclcpp::Subscription<robocup_vision::msg::PanTilt>::SharedPtr pan_tilt_sub_;
+  rclcpp::Subscription<robocup_vision::msg::PanTiltMsgs>::SharedPtr pan_tilt_sub_;
   rclcpp::Subscription<humanoid_interfaces::msg::Master2vision25>::SharedPtr visionSub;
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr image_sub_;
 
   humanoid_interfaces::msg::Robocupvision25 visionMsg;
   humanoid_interfaces::msg::Robocupvision25feature vision_feature_Msg;
+  robocup_vision::msg::PanTilt PanTilt;
   rclcpp::Publisher<humanoid_interfaces::msg::Robocupvision25>::SharedPtr visionPub;
   rclcpp::Publisher<humanoid_interfaces::msg::Robocupvision25feature>::SharedPtr vision_feature_Pub;
+  rclcpp::Publisher<robocup_vision::msg::PanTilt>::SharedPtr pan_tilt_pub_;
 
   // ===== Callback =====
   void bboxCallback(const robocup_vision::msg::BoundingBox::SharedPtr msg);
-  void pan_tilt_Callback(const robocup_vision::msg::PanTilt::SharedPtr msg);
+  void pan_tilt_Callback(const robocup_vision::msg::PanTiltMsgs::SharedPtr msg);
   void master_callback(const humanoid_interfaces::msg::Master2vision25::SharedPtr msg);
   void imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr msg);
 

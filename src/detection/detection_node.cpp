@@ -62,8 +62,9 @@ void DetectionNode::imageProcessing()
   // ---- 2. 모델 추론 ----
   auto infer_request = compiled_model_.create_infer_request();
   infer_request.set_tensor(input_port, input_tensor);
-  infer_request.start_async();
-  infer_request.wait();
+  infer_request.infer();
+  // infer_request.start_async();
+  // infer_request.wait();
 
   auto output_tensor = infer_request.get_tensor(compiled_model_.output(0));
   const float *output_data = output_tensor.data<float>();

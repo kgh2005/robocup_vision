@@ -2,8 +2,11 @@
 
 PanTiltNode::PanTiltNode() : rclcpp::Node("pan_tilt_node")
 {
+  pan_tilt_sub_ = this->create_subscription<robocup_vision::msg::PanTilt>(
+      "/PanTilt", 10,
+      std::bind(&PanTiltNode::pan_tilt_Callback, this, std::placeholders::_1));
   // Motor_Pub = this->create_publisher<dynamixel_rdk_msgs::msg::DynamixelMsgs>("pan_tilt_dxl", 10);
-  pan_tilt_pub_ = this->create_publisher<robocup_vision::msg::PanTilt>("/PanTilt", 10);
+  pan_tilt_pub_ = this->create_publisher<robocup_vision::msg::PanTiltMsgs>("/camera1/pan_tilt", 10);
   // pan_tilt_sub_ = this->create_subscription<intelligent_humanoid_interfaces::msg::Master2VisionMsg>(
   //     "/master/pan_tilt", 10,
   //     std::bind(&PanTiltNode::pantiltCallback, this, std::placeholders::_1));
@@ -28,31 +31,15 @@ void PanTiltNode::pan_tilt_mode()
   case 0: // init
   {
     pan_Pos_ = 0;
-    tilt_Pos_ = -55;
-    pan_tilt_publish();
-    break;
-  }
-
-  case 1: // 공 - 트레킹모드 - tilt 45도
-  {
-    pan_Pos_ = 0;
-    tilt_Pos_ = -55;
-    pan_tilt_publish();
-    break;
-  }
-
-  case 2: // 골대 - 트레킹모드 - tilt 0도
-  {
-    pan_Pos_ = 0;
     tilt_Pos_ = 0;
     pan_tilt_publish();
     break;
   }
 
-  case 3: // 허들 - 트레킹모드 - tilt 90도
+  case 1: // tilt 45도
   {
     pan_Pos_ = 0;
-    tilt_Pos_ = -80;
+    tilt_Pos_ = -150000;
     pan_tilt_publish();
     break;
   }
@@ -61,6 +48,13 @@ void PanTiltNode::pan_tilt_mode()
     RCLCPP_ERROR(this->get_logger(), "===== Pan_Tilt ERROR!! =====");
     break;
   }
+}
+
+void PanTiltNode::pan_tilt_Callback(const robocup_vision::msg::PanTilt::SharedPtr msg)
+{
+  mode = msg->mode;
+
+  pan_tilt_mode();
 }
 
 // void PanTiltNode::pantiltCallback(const intelligent_humanoid_interfaces::msg::Master2VisionMsg::SharedPtr msg)

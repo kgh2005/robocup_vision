@@ -2,11 +2,9 @@
 
 RefinerNode::RefinerNode() : Node("refiner_node")
 {
-  visionPub = this->create_publisher<humanoid_interfaces::msg::Robocupvision25>(
-      "vision", 10);
-  vision_feature_Pub =
-      this->create_publisher<humanoid_interfaces::msg::Robocupvision25feature>(
-          "vision_feature", 10);
+  visionPub = this->create_publisher<humanoid_interfaces::msg::Robocupvision25>("vision", 10);
+  vision_feature_Pub = this->create_publisher<humanoid_interfaces::msg::Robocupvision25feature>("vision_feature", 10);
+  pan_tilt_pub_ = this->create_publisher<robocup_vision::msg::PanTilt>("/PanTilt", 10);
   visionSub =
       this->create_subscription<humanoid_interfaces::msg::Master2vision25>(
           "master2vision", 10,
@@ -15,8 +13,8 @@ RefinerNode::RefinerNode() : Node("refiner_node")
   bbox_sub_ = this->create_subscription<robocup_vision::msg::BoundingBox>(
       "/Bounding_box", 10,
       std::bind(&RefinerNode::bboxCallback, this, std::placeholders::_1));
-  pan_tilt_sub_ = this->create_subscription<robocup_vision::msg::PanTilt>(
-      "/PanTilt", 10,
+  pan_tilt_sub_ = this->create_subscription<robocup_vision::msg::PanTiltMsgs>(
+      "/camera1/pan_tilt", 10,
       std::bind(&RefinerNode::pan_tilt_Callback, this, std::placeholders::_1));
   image_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
       "/camera1/camera/image_raw", 10,
@@ -126,7 +124,7 @@ void RefinerNode::timerCallback()
   filter_cnt += 1;
 }
 
-void RefinerNode::pan_tilt_Callback(const robocup_vision::msg::PanTilt::SharedPtr msg)
+void RefinerNode::pan_tilt_Callback(const robocup_vision::msg::PanTiltMsgs::SharedPtr msg)
 {
   tilt_deg = msg->tilt;
 }
@@ -334,7 +332,7 @@ void RefinerNode::bboxProcessing()
     line_pts.clear();
     line_condis.clear();
 
-    // publish_localization_msg();
+    publish_localization_msg();
   }
 
   // ===== robot 관련 =====
@@ -383,6 +381,7 @@ void RefinerNode::bboxProcessing()
       visionMsg.robot_vec_x.push_back(robot_absx);
       visionMsg.robot_vec_y.push_back(robot_absy);
     }
+    robot_pts.clear(); // 로봇 좌표 벡터 초기화
   }
 
   else // 로봇(obstacle)이 카운트 되지 않았을 경우 실행
@@ -446,6 +445,10 @@ void RefinerNode::imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr ms
     bgr_image = cv_bridge::toCvShare(msg, "bgr8")->image.clone();
     //bboxProcessing();
     fps_cnt += 1;
+
+    PanTilt.mode = 1;
+    pan_tilt_pub_->publish(PanTilt);
+
   }
   catch (const cv_bridge::Exception &e)
   {
