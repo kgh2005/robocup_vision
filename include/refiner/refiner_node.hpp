@@ -101,18 +101,25 @@ private:
   // ==========
 
   int tilt_deg = 90;
+  int remove_space_dis = 3000;
 
   // ==========
   std::vector<cv::Point2f> ball_pts;
-  std::vector<cv::Point2f> line_pts, line_condis;
   std::vector<cv::Point2f> robot_pts;
+  std::vector<cv::Point2f> line_L_pts, line_L_condis;
+  std::vector<cv::Point2f> line_T_pts, line_T_condis;
+  std::vector<cv::Point2f> line_X_pts, line_X_condis;
   ObjectPos ballPos;
-  ObjectPos linePos;
   ObjectPos robotPos;
+  ObjectPos line_L_Pos;
+  ObjectPos line_T_Pos;
+  ObjectPos line_X_Pos;
   PAN_TILT pan_tilt;
   std::vector<DetectionResult> Detections_ball_;
-  std::vector<DetectionResult> Detections_line_;
   std::vector<DetectionResult> Detections_robot_;
+  std::vector<DetectionResult> Detections_line_L_;
+  std::vector<DetectionResult> Detections_line_T_;
+  std::vector<DetectionResult> Detections_line_X_;
   // ==========
 
   // ===== ROS 통신 =====

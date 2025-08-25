@@ -21,7 +21,7 @@ DetectionNode::DetectionNode() : Node("detection_node")
   }
   bbox_pub_ = this->create_publisher<robocup_vision::msg::BoundingBox>("/Bounding_box", 10);
   image_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
-      "/camera1/camera/image_raw", 10,
+      "/camera1/camera/compressed_image", 10,
       std::bind(&DetectionNode::imageCallback, this, std::placeholders::_1));
 }
 

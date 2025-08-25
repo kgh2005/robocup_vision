@@ -4,7 +4,6 @@
       camera_name: "camera1"
       topic: "/camera/image_raw"
       compressed_topic: "/camera/compressed_image"
-      compressed_depth_topic: "/camera/compressed_depth"
       device: "/dev/video2"
       frame_id: "camera"
       resolution: "1920x1080"
@@ -20,8 +19,8 @@
       auto_whitebalance: true
       exposure: -1
       auto_exposure: true
-      # focus: -1
-      # auto_focus: false
+      focus: -1
+      auto_focus: false
       zoom: -1
       pan: -1
       tilt: -1
