@@ -33,8 +33,8 @@ RefinerNode::RefinerNode() : Node("refiner_node")
         prncPt.x = K_M.at<double>(0, 2);
         prncPt.y = K_M.at<double>(1, 2);
 
-        width = msg->width;   // 1920
-        height = msg->height; // 1080
+        width = msg->width;   // 1920 // 640
+        height = msg->height; // 1080 // 480
 
         NEW_K_M = getOptimalNewCameraMatrix(K_M, D_M, cv::Size(width, height), 0.3, cv::Size(width, height), 0);
       });
@@ -46,6 +46,22 @@ RefinerNode::RefinerNode() : Node("refiner_node")
   RCLCPP_INFO(this->get_logger(), "New Camera Matrix:\n%s", ss.str().c_str());
 
   RCLCPP_INFO(this->get_logger(), "RefinerNode initialized.");
+
+  get_param();
+  RCLCPP_INFO(this->get_logger(), "ROBOT_HEIGHT: %d", ROBOT_HEIGHT);
+  RCLCPP_INFO(this->get_logger(), "TILT_L: %d", TILT_L);
+  RCLCPP_INFO(this->get_logger(), "TILT_D: %d", TILT_D);
+}
+
+void RefinerNode::get_param()
+{
+  this->declare_parameter("ROBOT_HEIGHT", ROBOT_HEIGHT);
+  this->declare_parameter("TILT_L", TILT_L);
+  this->declare_parameter("TILT_D", TILT_D);
+
+  this->get_parameter("ROBOT_HEIGHT", ROBOT_HEIGHT);
+  this->get_parameter("TILT_L", TILT_L);
+  this->get_parameter("TILT_D", TILT_D);
 }
 
 void RefinerNode::timerCallback()

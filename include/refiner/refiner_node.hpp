@@ -18,10 +18,6 @@
 #include "humanoid_interfaces/msg/robocupvision25.hpp"
 #include "humanoid_interfaces/msg/robocupvision25feature.hpp"
 
-#define ROBOT_HEIGHT 610 // 490//475// 505//545// 755.0//544
-#define TILT_L 0         // 65.0//75.0 //축간 거리
-#define TILT_D -30
-
 struct DetectionResult
 {
   int class_id;
@@ -103,6 +99,12 @@ private:
   int tilt_deg = 90;
   int remove_space_dis = 3000;
 
+  // ===== 삼각측량법 =====
+  int ROBOT_HEIGHT;
+  int TILT_L;
+  int TILT_D;
+  // ==========
+
   // ==========
   std::vector<cv::Point2f> ball_pts;
   std::vector<cv::Point2f> robot_pts;
@@ -152,4 +154,8 @@ private:
   // ===== timer =====
   rclcpp::TimerBase::SharedPtr timer_;
   void timerCallback();
+
+  // ===== param =====
+  void get_param();
+  // ==========
 };

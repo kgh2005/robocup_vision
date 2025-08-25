@@ -23,6 +23,12 @@ def generate_launch_description():
         'camera_info_config.yaml'
     )
 
+    robot_info = os.path.join(
+        get_package_share_directory('robocup_vision'),
+        'config',
+        'robot_config.yaml'
+    )
+
     # YAML 설정 파일 로드
     with open(config_dir, 'r') as file:
         config_params = yaml.safe_load(file)
@@ -55,7 +61,8 @@ def generate_launch_description():
         package='robocup_vision',
         executable='refiner_node',
         name='refiner_node',
-        output='screen'
+        output='screen',
+        parameters=[robot_info]
     )
 
     pan_tilt_node = Node(

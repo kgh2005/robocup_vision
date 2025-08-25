@@ -1,0 +1,5 @@
+/**:
+  ros__parameters:
+    ROBOT_HEIGHT: 610 # 490 #475 #505 #545 #755 #544
+    TILT_L: 0         #65.0 #75.0 //축간 거리
+    TILT_D: -30
