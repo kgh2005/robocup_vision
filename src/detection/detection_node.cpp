@@ -21,7 +21,7 @@ DetectionNode::DetectionNode() : Node("detection_node")
   }
   bbox_pub_ = this->create_publisher<robocup_vision::msg::BoundingBox>("/Bounding_box", 10);
   image_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
-      "/camera1/camera/compressed_image", 10,
+      "/camera1/camera/compressed_image", 10, // image_raw
       std::bind(&DetectionNode::imageCallback, this, std::placeholders::_1));
 }
 
@@ -92,6 +92,10 @@ void DetectionNode::imageProcessing()
     float confidence = det[4];
     int class_id = static_cast<int>(det[5]);
 
+    // ==========
+    // 좌표가 letterbox 안에 생성될 경우 처리해 주는 코드를 추가해 줘야 한다.
+    // ==========
+
     int bx1, by1, bx2, by2;
 
     // 픽셀 좌표를 입력 해상도 기준으로 스케일링
@@ -137,6 +141,8 @@ void DetectionNode::imageProcessing()
   bbox_pub_->publish(bbox);
   cv::imshow("Detection", bgr_image);
   cv::waitKey(1);
+
+  flag = 1;
 }
 
 void DetectionNode::imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr msg)
@@ -144,7 +150,12 @@ void DetectionNode::imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr 
   try
   {
     bgr_image = cv_bridge::toCvShare(msg, "bgr8")->image.clone();
-    imageProcessing();
+
+    if (flag)
+    {
+      flag = 0;
+      imageProcessing();
+    }
   }
   catch (const cv_bridge::Exception &e)
   {

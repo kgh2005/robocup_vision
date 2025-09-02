@@ -44,6 +44,14 @@ void PanTiltNode::pan_tilt_mode()
     break;
   }
 
+  case 2: // tilt 45도
+  {
+    pan_Pos_ = 300000;
+    tilt_Pos_ = 0;
+    pan_tilt_publish();
+    break;
+  }
+
   default:
     RCLCPP_ERROR(this->get_logger(), "===== Pan_Tilt ERROR!! =====");
     break;

@@ -87,6 +87,9 @@ PanTiltCamera::on_configure(const rclcpp_lifecycle::State &)
           }
         }
       }
+      for(const auto& resolution : supported_resolutions) {
+        std::cout << "Supported resolution: " << resolution.first << "x" << resolution.second << std::endl;
+      }
     }
 
     if (supported_format != highest_format)
@@ -155,13 +158,13 @@ PanTiltCamera::on_configure(const rclcpp_lifecycle::State &)
     return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::FAILURE;
   }
 
-  image_pub_ = this->create_publisher<sensor_msgs::msg::Image>(topic.c_str(), 10);
+  image_pub_ = this->create_publisher<sensor_msgs::msg::Image>(topic.c_str(), 100);
   compressed_image_pub_ =
-      this->create_publisher<sensor_msgs::msg::Image>(compressed_topic.c_str(), 10);
+      this->create_publisher<sensor_msgs::msg::Image>(compressed_topic.c_str(), 100);
   camera_info_pub_ =
-      this->create_publisher<sensor_msgs::msg::CameraInfo>(camera_info_topic.c_str(), 10);
+      this->create_publisher<sensor_msgs::msg::CameraInfo>(camera_info_topic.c_str(), 100);
   compressed_camera_info_pub_ =
-      this->create_publisher<sensor_msgs::msg::CameraInfo>(compressed_camera_info_topic.c_str(), 10);
+      this->create_publisher<sensor_msgs::msg::CameraInfo>(compressed_camera_info_topic.c_str(), 100);
   pan_tilt_status_pub_ = this->create_publisher<robocup_vision::msg::PanTiltStatusMsgs>(
       pan_tilt_status_topic.c_str(), 1);
   pan_tilt_sub_ = this->create_subscription<robocup_vision::msg::PanTiltMsgs>(
@@ -188,7 +191,7 @@ PanTiltCamera::on_activate(const rclcpp_lifecycle::State &)
   image_pub_->on_activate();
   compressed_image_pub_->on_activate();
   camera_info_pub_->on_activate();
-  compressed_camera_info_pub_->on_activate(); 
+  compressed_camera_info_pub_->on_activate();
   pan_tilt_status_pub_->on_activate();
 
   timer_ = this->create_wall_timer(std::chrono::milliseconds(1000 / (int)fps), [this]()
@@ -219,38 +222,49 @@ PanTiltCamera::on_activate(const rclcpp_lifecycle::State &)
 
 cv::Mat PanTiltCamera::letterbox(const cv::Mat &src)
 {
-  if (src.empty())
-    return src;
+  if (src.empty()) return src;
 
-  const double src_aspect = static_cast<double>(src.cols) / src.rows;
-  const double dst_aspect = static_cast<double>(out_w_) / out_h_;
+  const int sw = src.cols, sh = src.rows;
+  const int dw = out_w_,  dh = out_h_;
 
-  // 비율 유지 축소
-  int rw = out_w_;
-  int rh = static_cast<int>(std::round(out_w_ / src_aspect));
-  if (rh > out_h_)
-  {
-    rh = out_h_;
-    rw = static_cast<int>(std::round(out_h_ * src_aspect));
+  // 1) 종횡비 완전 동일: 패딩 없이 리사이즈만
+  if (1LL * sw * dh == 1LL * sh * dw) { // 정수 교차곱: FP오차 없음 => 1LL(longlong 혹시 몰라서)
+    last_s_  = static_cast<double>(dw) / sw;    // == (double)dh/sh
+    last_px_ = 0;
+    last_py_ = 0;
+
+    cv::Mat dst;
+    const int interp = (last_s_ < 1.0) ? cv::INTER_AREA : cv::INTER_LINEAR;
+    cv::resize(src, dst, cv::Size(dw, dh), 0, 0, interp);
+
+    image_width  = dw;
+    image_height = dh;
+    return dst;
   }
 
-  // 스케일 & 패딩(카메라파라미터 보정용 저장)
-  last_s_ = static_cast<double>(rw) / src.cols; // = rh / src.rows
-  last_px_ = (out_w_ - rw) / 2;                 // left pad
-  last_py_ = (out_h_ - rh) / 2;                 // top  pad
+  // 2) 일반 케이스: 레터박스
+  const double s = std::min(static_cast<double>(dw) / sw,
+                            static_cast<double>(dh) / sh);
+  const int rw = static_cast<int>(std::lround(sw * s));
+  const int rh = static_cast<int>(std::lround(sh * s));
+
+  last_s_  = s;
+  last_px_ = (dw - rw) / 2;  // left pad (오드면 오른쪽이 1픽셀 더 큼)
+  last_py_ = (dh - rh) / 2;  // top  pad
+
+  const int interp = (s < 1.0) ? cv::INTER_AREA : cv::INTER_LINEAR;
 
   cv::Mat resized;
-  cv::resize(src, resized, cv::Size(rw, rh), 0, 0, cv::INTER_AREA);
+  cv::resize(src, resized, cv::Size(rw, rh), 0, 0, interp);
 
-  // 검은 띠 패딩 프레임
-  cv::Mat dst(out_h_, out_w_, src.type(), cv::Scalar::all(0));
+  cv::Mat dst(dh, dw, src.type(), cv::Scalar::all(0));
   resized.copyTo(dst(cv::Rect(last_px_, last_py_, rw, rh)));
 
-  // 퍼블리시 해상도 갱신
-  image_width = out_w_;
-  image_height = out_h_;
+  image_width  = dw;
+  image_height = dh;
   return dst;
 }
+
 
 void PanTiltCamera::publish_compressed_camera_info(const std_msgs::msg::Header &header)
 {
@@ -322,7 +336,7 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn PanTil
   image_pub_.reset();
   compressed_image_pub_.reset();
   camera_info_pub_.reset();
-  compressed_camera_info_pub_.reset(); 
+  compressed_camera_info_pub_.reset();
   pan_tilt_status_pub_.reset();
   pan_tilt_sub_.reset();
 
@@ -344,7 +358,7 @@ PanTiltCamera::on_shutdown(const rclcpp_lifecycle::State &state)
   image_pub_.reset();
   compressed_image_pub_.reset();
   camera_info_pub_.reset();
-  compressed_camera_info_pub_.reset(); 
+  compressed_camera_info_pub_.reset();
 
   RCLCPP_INFO(this->get_logger(), "PanTiltCamera shut down.");
   return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;

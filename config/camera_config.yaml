@@ -6,8 +6,8 @@
     compressed_topic: "/camera/compressed_image"
     device: "/dev/video2"
     frame_id: "camera"
-    resolution: "1920x1080"
-    fps: 30.0
+    resolution: "1280x960"
+    fps: 10.0
     format: "MJPEG"
     brightness: -1
     contrast: -1

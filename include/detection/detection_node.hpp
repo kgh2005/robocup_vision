@@ -23,7 +23,7 @@ const std::map<int, cv::Scalar> COLORS = {
     {0, cv::Scalar(0, 0, 255)},   // 빨간색
     {1, cv::Scalar(0, 255, 0)},   // 초록색
     {2, cv::Scalar(0, 255, 255)}, // 노란색
-    {3, cv::Scalar(255, 0, 0)},   // 파란색
+    {3, cv::Scalar(255, 0, 0)},   // 파란색s
 };
 
 class DetectionNode : public rclcpp::Node
@@ -34,7 +34,8 @@ public:
 private:
   cv::Mat bgr_image;
 
-  const int LAPTOP_CLASS_ID = 63;
+  int flag = 1;
+
 
   // OpenVINO 엔진
   ov::Core core_;                    // OpenVINO 런타임 코어

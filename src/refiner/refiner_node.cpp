@@ -11,16 +11,16 @@ RefinerNode::RefinerNode() : Node("refiner_node")
           std::bind(&RefinerNode::master_callback, this,
                     std::placeholders::_1));
   bbox_sub_ = this->create_subscription<robocup_vision::msg::BoundingBox>(
-      "/Bounding_box", 10,
+      "/Bounding_box", rclcpp::SensorDataQoS().keep_last(1).best_effort(),
       std::bind(&RefinerNode::bboxCallback, this, std::placeholders::_1));
   pan_tilt_sub_ = this->create_subscription<robocup_vision::msg::PanTiltMsgs>(
-      "/camera1/pan_tilt", 10,
+      "/camera1/pan_tilt", 100,
       std::bind(&RefinerNode::pan_tilt_Callback, this, std::placeholders::_1));
-  image_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
-      "/camera1/camera/compressed_image", 10,
-      std::bind(&RefinerNode::imageCallback, this, std::placeholders::_1));
+  // image_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
+  //     "/camera1/camera/compressed_image", rclcpp::SensorDataQoS().keep_last(1).best_effort(),
+  //     std::bind(&RefinerNode::imageCallback, this, std::placeholders::_1));
   camera_info_sub_ = this->create_subscription<sensor_msgs::msg::CameraInfo>(
-      "/camera1/compressed_info", 10,
+      "/camera1/compressed_info", 100,
       [this](const sensor_msgs::msg::CameraInfo::SharedPtr msg)
       {
         K_M = cv::Mat(3, 3, CV_64F, (void *)msg->k.data()).clone();
@@ -76,6 +76,19 @@ void RefinerNode::timerCallback()
     fps_cnt = 0;
     filter_cnt = 0;
     nice_cnt = 0;
+
+    if (count == 2)
+    {
+      PanTilt.mode = count;
+      pan_tilt_pub_->publish(PanTilt);
+      // count = 0;
+    }
+    else
+    {
+      PanTilt.mode = count;
+      pan_tilt_pub_->publish(PanTilt);
+      // count += 1;
+    }
   }
   if (fst_filter_cnt != 0)
   {
@@ -285,6 +298,8 @@ void RefinerNode::bboxProcessing()
         ball_filter_idx++;
       }
     }
+
+    ball_pts.clear(); // 공 좌표 벡터 초기화
 
     // 필터 적용 후 최종적으로 나온 데이터 저장
     ball_cam_X = ball_center_X;
@@ -532,6 +547,7 @@ void RefinerNode::bboxProcessing()
 
   publish_vision_msg();
   publish_localization_msg();
+  flag = 1;
 }
 
 void RefinerNode::bboxCallback(const robocup_vision::msg::BoundingBox::SharedPtr msg)
@@ -586,22 +602,19 @@ void RefinerNode::bboxCallback(const robocup_vision::msg::BoundingBox::SharedPtr
   }
 }
 
-void RefinerNode::imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr msg)
-{
-  try
-  {
-    bgr_image = cv_bridge::toCvShare(msg, "bgr8")->image.clone();
-    // bboxProcessing();
-    fps_cnt += 1;
-
-    PanTilt.mode = 1;
-    pan_tilt_pub_->publish(PanTilt);
-  }
-  catch (const cv_bridge::Exception &e)
-  {
-    RCLCPP_ERROR(get_logger(), "cv_bridge exception: %s", e.what());
-  }
-}
+// void RefinerNode::imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr msg)
+// {
+//   try
+//   {
+//     // bgr_image = cv_bridge::toCvShare(msg, "bgr8")->image.clone();
+//     // bboxProcessing();
+//     fps_cnt += 1;
+//   }
+//   catch (const cv_bridge::Exception &e)
+//   {
+//     RCLCPP_ERROR(get_logger(), "cv_bridge exception: %s", e.what());
+//   }
+// }
 
 void RefinerNode::master_callback(const humanoid_interfaces::msg::Master2vision25::SharedPtr msg)
 {

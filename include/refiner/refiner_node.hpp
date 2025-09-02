@@ -1,4 +1,5 @@
 #include "rclcpp/rclcpp.hpp"
+#include "rclcpp/qos.hpp"
 
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/msg/camera_info.hpp>
@@ -58,7 +59,7 @@ private:
   cv::Point2d prncPt;
   int width = 0, height = 0;
 
-  cv::Mat bgr_image;
+  // cv::Mat bgr_image;
   // ==========
 
   // ===== timer =====
@@ -104,7 +105,8 @@ private:
   int TILT_L;
   int TILT_D;
   // ==========
-
+  int count = 0;
+  int flag = 1;
   // ==========
   std::vector<cv::Point2f> ball_pts;
   std::vector<cv::Point2f> robot_pts;
@@ -129,7 +131,7 @@ private:
   rclcpp::Subscription<robocup_vision::msg::BoundingBox>::SharedPtr bbox_sub_;
   rclcpp::Subscription<robocup_vision::msg::PanTiltMsgs>::SharedPtr pan_tilt_sub_;
   rclcpp::Subscription<humanoid_interfaces::msg::Master2vision25>::SharedPtr visionSub;
-  rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr image_sub_;
+  // rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr image_sub_;
 
   humanoid_interfaces::msg::Robocupvision25 visionMsg;
   humanoid_interfaces::msg::Robocupvision25feature vision_feature_Msg;
@@ -142,7 +144,7 @@ private:
   void bboxCallback(const robocup_vision::msg::BoundingBox::SharedPtr msg);
   void pan_tilt_Callback(const robocup_vision::msg::PanTiltMsgs::SharedPtr msg);
   void master_callback(const humanoid_interfaces::msg::Master2vision25::SharedPtr msg);
-  void imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr msg);
+  // void imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr msg);
 
   // ===== 좌표 =====
   void bboxProcessing();
