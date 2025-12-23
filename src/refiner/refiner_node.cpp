@@ -158,33 +158,14 @@ void RefinerNode::publish_localization_msg()
 
   // std::cout << "publish_localization_msg" << std::endl;
 
-  if (vision_feature_Msg.confidence_l.size() > 0 ||
-      vision_feature_Msg.confidence_t.size() > 0 ||
-      vision_feature_Msg.confidence_x.size() > 0)
+  if (vision_feature_Msg.confidence.size() > 0)
   {
     vision_feature_Pub->publish(vision_feature_Msg);
-  }
 
-  if (vision_feature_Msg.confidence_l.size() > 0)
-  {
-    vision_feature_Msg.confidence_l.clear();
-    vision_feature_Msg.distance_l.clear();
-    vision_feature_Msg.point_vec_x_l.clear();
-    vision_feature_Msg.point_vec_y_l.clear();
-  }
-  if (vision_feature_Msg.confidence_t.size() > 0)
-  {
-    vision_feature_Msg.confidence_t.clear();
-    vision_feature_Msg.distance_t.clear();
-    vision_feature_Msg.point_vec_x_t.clear();
-    vision_feature_Msg.point_vec_y_t.clear();
-  }
-  if (vision_feature_Msg.confidence_x.size() > 0)
-  {
-    vision_feature_Msg.confidence_x.clear();
-    vision_feature_Msg.distance_x.clear();
-    vision_feature_Msg.point_vec_x_x.clear();
-    vision_feature_Msg.point_vec_y_x.clear();
+    vision_feature_Msg.confidence.clear();
+    vision_feature_Msg.distance.clear();
+    vision_feature_Msg.point_vec_x.clear();
+    vision_feature_Msg.point_vec_y.clear();
   }
 }
 
@@ -380,169 +361,59 @@ void RefinerNode::bboxProcessing()
   }
 
   // ===== line 관련 =====
-  if (Detections_line_L_.size() > 0)
+  if (Detections_line_.size() > 0)
   {
-    for (size_t i = 0; i < Detections_line_L_.size(); i++)
+    for (size_t i = 0; i < Detections_line_.size(); i++)
     {
       // 라인의 바운딩 박스 좌표를 사용하여 중심점 계산
-      const auto &bbox = Detections_line_L_[i].bbox;
-      double line_L_center_X = bbox.x + bbox.width / 2;
-      double line_L_center_Y = bbox.y + bbox.height / 2;
+      const auto &bbox = Detections_line_[i].bbox;
+      double line_center_X = bbox.x + bbox.width / 2;
+      double line_center_Y = bbox.y + bbox.height / 2;
 
-      if ((line_L_center_X > remove_rect.x + remove_rect.width || line_L_center_X < remove_rect.x) ||
-          (line_L_center_Y > remove_rect.y + remove_rect.height || line_L_center_Y < remove_rect.y))
+      if ((line_center_X > remove_rect.x + remove_rect.width || line_center_X < remove_rect.x) ||
+          (line_center_Y > remove_rect.y + remove_rect.height || line_center_Y < remove_rect.y))
       {
-        line_L_pts.push_back(cv::Point2f(line_L_center_X, line_L_center_Y));
-        line_L_condis.push_back(cv::Point2f(Detections_line_L_[i].score, 0));
+        line_pts.push_back(cv::Point2f(line_center_X, line_center_Y));
+        line_condis.push_back(cv::Point2f(Detections_line_[i].score, 0));
       }
     }
 
-    if (!line_L_pts.empty())
+    if (!line_pts.empty())
     {
       // 카메라 렌즈 왜곡 보정
-      cv::undistortPoints(line_L_pts, line_L_pts, K_M, D_M, cv::Mat(), NEW_K_M);
+      cv::undistortPoints(line_pts, line_pts, K_M, D_M, cv::Mat(), NEW_K_M);
     }
 
-    for (size_t i = 0; i < line_L_pts.size(); i++) // 저장된 데이터 수 만큼 반복
+    for (size_t i = 0; i < line_pts.size(); i++) // 저장된 데이터 수 만큼 반복
     {
       // 특징점의 거리 계산
-      line_L_Pos = calcObjectDistance(
+      line_Pos = calcObjectDistance(
           pan_tilt.ptpos.TILT_POSITION,
           ROBOT_HEIGHT + TILT_L * (cos(pan_tilt.ptpos.TILT_POSITION * DEG2RAD) - 1),
           focalLen,
           prncPt,
-          cv::Point2f(line_L_pts[i].x, line_L_pts[i].y));
+          cv::Point2f(line_pts[i].x, line_pts[i].y));
 
-      double line_L_x = line_L_Pos.dist * sin(line_L_Pos.theta * M_PI / 180);
-      double line_L_y = line_L_Pos.dist * cos(line_L_Pos.theta * M_PI / 180);
+      double line_x = line_Pos.dist * sin(line_Pos.theta * M_PI / 180);
+      double line_y = line_Pos.dist * cos(line_Pos.theta * M_PI / 180);
 
-      double line_L_absx = line_L_x * cos((-1) * pan_tilt.ptpos.PAN_POSITION * M_PI / 180) - line_L_y * sin((-1) * pan_tilt.ptpos.PAN_POSITION * M_PI / 180);
-      double line_L_absy = line_L_x * sin((-1) * pan_tilt.ptpos.PAN_POSITION * M_PI / 180) + line_L_y * cos((-1) * pan_tilt.ptpos.PAN_POSITION * M_PI / 180);
+      double line_absx = line_x * cos((-1) * pan_tilt.ptpos.PAN_POSITION * M_PI / 180) - line_y * sin((-1) * pan_tilt.ptpos.PAN_POSITION * M_PI / 180);
+      double line_absy = line_x * sin((-1) * pan_tilt.ptpos.PAN_POSITION * M_PI / 180) + line_y * cos((-1) * pan_tilt.ptpos.PAN_POSITION * M_PI / 180);
 
       // 일정 거리 이상에 존재하는 특징점은 예외 처리
-      if (line_L_Pos.dist < remove_space_dis)
+      if (line_Pos.dist < remove_space_dis)
       {
         // 로컬 노드에 특징점의 데이터를 보내기 위해 데이터 PUBLISH
-        vision_feature_Msg.confidence_l.push_back(line_L_condis[i].x);
-        vision_feature_Msg.distance_l.push_back(line_L_Pos.dist);
-        vision_feature_Msg.point_vec_x_l.push_back(line_L_absx);
-        vision_feature_Msg.point_vec_y_l.push_back(line_L_absy);
+        vision_feature_Msg.confidence.push_back(line_condis[i].x);
+        vision_feature_Msg.distance.push_back(line_Pos.dist);
+        vision_feature_Msg.point_vec_x.push_back(line_absx);
+        vision_feature_Msg.point_vec_y.push_back(line_absy);
       }
     }
 
     // 벡터 초기화
-    line_L_pts.clear();
-    line_L_condis.clear();
-  }
-
-  if (Detections_line_T_.size() > 0)
-  {
-    for (size_t i = 0; i < Detections_line_T_.size(); i++)
-    {
-      // 라인의 바운딩 박스 좌표를 사용하여 중심점 계산
-      const auto &bbox = Detections_line_T_[i].bbox;
-      double line_T_center_X = bbox.x + bbox.width / 2;
-      double line_T_center_Y = bbox.y + bbox.height / 2;
-
-      if ((line_T_center_X > remove_rect.x + remove_rect.width || line_T_center_X < remove_rect.x) ||
-          (line_T_center_Y > remove_rect.y + remove_rect.height || line_T_center_Y < remove_rect.y))
-      {
-        line_T_pts.push_back(cv::Point2f(line_T_center_X, line_T_center_Y));
-        line_T_condis.push_back(cv::Point2f(Detections_line_T_[i].score, 0));
-      }
-    }
-
-    if (!line_T_pts.empty())
-    {
-      // 카메라 렌즈 왜곡 보정
-      cv::undistortPoints(line_T_pts, line_T_pts, K_M, D_M, cv::Mat(), NEW_K_M);
-    }
-
-    for (size_t i = 0; i < line_T_pts.size(); i++) // 저장된 데이터 수 만큼 반복
-    {
-      // 특징점의 거리 계산
-      line_T_Pos = calcObjectDistance(
-          pan_tilt.ptpos.TILT_POSITION,
-          ROBOT_HEIGHT + TILT_L * (cos(pan_tilt.ptpos.TILT_POSITION * DEG2RAD) - 1),
-          focalLen,
-          prncPt,
-          cv::Point2f(line_T_pts[i].x, line_T_pts[i].y));
-
-      double line_T_x = line_T_Pos.dist * sin(line_T_Pos.theta * M_PI / 180);
-      double line_T_y = line_T_Pos.dist * cos(line_T_Pos.theta * M_PI / 180);
-
-      double line_T_absx = line_T_x * cos((-1) * pan_tilt.ptpos.PAN_POSITION * M_PI / 180) - line_T_y * sin((-1) * pan_tilt.ptpos.PAN_POSITION * M_PI / 180);
-      double line_T_absy = line_T_x * sin((-1) * pan_tilt.ptpos.PAN_POSITION * M_PI / 180) + line_T_y * cos((-1) * pan_tilt.ptpos.PAN_POSITION * M_PI / 180);
-
-      // 일정 거리 이상에 존재하는 특징점은 예외 처리
-      if (line_T_Pos.dist < remove_space_dis)
-      {
-        // 로컬 노드에 특징점의 데이터를 보내기 위해 데이터 PUBLISH
-        vision_feature_Msg.confidence_t.push_back(line_T_condis[i].x);
-        vision_feature_Msg.distance_t.push_back(line_T_Pos.dist);
-        vision_feature_Msg.point_vec_x_t.push_back(line_T_absx);
-        vision_feature_Msg.point_vec_y_t.push_back(line_T_absy);
-      }
-    }
-
-    // 벡터 초기화
-    line_T_pts.clear();
-    line_T_condis.clear();
-  }
-
-  if (Detections_line_X_.size() > 0)
-  {
-    for (size_t i = 0; i < Detections_line_X_.size(); i++)
-    {
-      // 라인의 바운딩 박스 좌표를 사용하여 중심점 계산
-      const auto &bbox = Detections_line_X_[i].bbox;
-      double line_X_center_X = bbox.x + bbox.width / 2;
-      double line_X_center_Y = bbox.y + bbox.height / 2;
-
-      if ((line_X_center_X > remove_rect.x + remove_rect.width || line_X_center_X < remove_rect.x) ||
-          (line_X_center_Y > remove_rect.y + remove_rect.height || line_X_center_Y < remove_rect.y))
-      {
-        line_X_pts.push_back(cv::Point2f(line_X_center_X, line_X_center_Y));
-        line_X_condis.push_back(cv::Point2f(Detections_line_X_[i].score, 0));
-      }
-    }
-
-    if (!line_X_pts.empty())
-    {
-      // 카메라 렌즈 왜곡 보정
-      cv::undistortPoints(line_X_pts, line_X_pts, K_M, D_M, cv::Mat(), NEW_K_M);
-    }
-
-    for (size_t i = 0; i < line_X_pts.size(); i++) // 저장된 데이터 수 만큼 반복
-    {
-      // 특징점의 거리 계산
-      line_X_Pos = calcObjectDistance(
-          pan_tilt.ptpos.TILT_POSITION,
-          ROBOT_HEIGHT + TILT_L * (cos(pan_tilt.ptpos.TILT_POSITION * DEG2RAD) - 1),
-          focalLen,
-          prncPt,
-          cv::Point2f(line_X_pts[i].x, line_X_pts[i].y));
-
-      double line_X_x = line_X_Pos.dist * sin(line_X_Pos.theta * M_PI / 180);
-      double line_X_y = line_X_Pos.dist * cos(line_X_Pos.theta * M_PI / 180);
-
-      double line_X_absx = line_X_x * cos((-1) * pan_tilt.ptpos.PAN_POSITION * M_PI / 180) - line_X_y * sin((-1) * pan_tilt.ptpos.PAN_POSITION * M_PI / 180);
-      double line_X_absy = line_X_x * sin((-1) * pan_tilt.ptpos.PAN_POSITION * M_PI / 180) + line_X_y * cos((-1) * pan_tilt.ptpos.PAN_POSITION * M_PI / 180);
-
-      // 일정 거리 이상에 존재하는 특징점은 예외 처리
-      if (line_X_Pos.dist < remove_space_dis)
-      {
-        // 로컬 노드에 특징점의 데이터를 보내기 위해 데이터 PUBLISH
-        vision_feature_Msg.confidence_x.push_back(line_X_condis[i].x);
-        vision_feature_Msg.distance_x.push_back(line_X_Pos.dist);
-        vision_feature_Msg.point_vec_x_x.push_back(line_X_absx);
-        vision_feature_Msg.point_vec_y_x.push_back(line_X_absy);
-      }
-    }
-
-    // 벡터 초기화
-    line_X_pts.clear();
-    line_X_condis.clear();
+    line_pts.clear();
+    line_condis.clear();
   }
 
   publish_vision_msg();
@@ -554,9 +425,7 @@ void RefinerNode::bboxCallback(const robocup_vision::msg::BoundingBox::SharedPtr
 {
   Detections_ball_.clear();
   Detections_robot_.clear();
-  Detections_line_L_.clear();
-  Detections_line_T_.clear();
-  Detections_line_X_.clear();
+  Detections_line_.clear();
 
   ball_most_confidence = 0;
 
@@ -584,15 +453,7 @@ void RefinerNode::bboxCallback(const robocup_vision::msg::BoundingBox::SharedPtr
     }
     else if (det.class_id == 2)
     {
-      Detections_line_L_.push_back(det);
-    }
-    else if (det.class_id == 3)
-    {
-      Detections_line_T_.push_back(det);
-    }
-    else if (det.class_id == 4)
-    {
-      Detections_line_X_.push_back(det);
+      Detections_line_.push_back(det);
     }
   }
 

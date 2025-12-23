@@ -24,6 +24,7 @@ void PanTiltNode::pan_tilt_publish()
   // RCLCPP_INFO(this->get_logger(), " ");
 }
 
+// insta 36000 => 10도
 void PanTiltNode::pan_tilt_mode()
 {
   switch (mode)
@@ -64,12 +65,6 @@ void PanTiltNode::pan_tilt_Callback(const robocup_vision::msg::PanTilt::SharedPt
 
   pan_tilt_mode();
 }
-
-// void PanTiltNode::pantiltCallback(const intelligent_humanoid_interfaces::msg::Master2VisionMsg::SharedPtr msg)
-// {
-//   mode = msg->tilt;
-//   pan_tilt_mode();
-// }
 
 int main(int argc, char **argv)
 {
