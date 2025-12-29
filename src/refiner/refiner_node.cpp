@@ -50,18 +50,52 @@ RefinerNode::RefinerNode() : Node("refiner_node")
   get_param();
   RCLCPP_INFO(this->get_logger(), "ROBOT_HEIGHT: %d", ROBOT_HEIGHT);
   RCLCPP_INFO(this->get_logger(), "TILT_L: %d", TILT_L);
-  RCLCPP_INFO(this->get_logger(), "TILT_D: %d", TILT_D);
 }
 
 void RefinerNode::get_param()
 {
   this->declare_parameter("ROBOT_HEIGHT", ROBOT_HEIGHT);
   this->declare_parameter("TILT_L", TILT_L);
-  this->declare_parameter("TILT_D", TILT_D);
 
   this->get_parameter("ROBOT_HEIGHT", ROBOT_HEIGHT);
   this->get_parameter("TILT_L", TILT_L);
-  this->get_parameter("TILT_D", TILT_D);
+}
+
+void RefinerNode::pan_tilt_publish()
+{
+  switch (mode)
+  {
+  case Mode::INIT:
+  {
+    PanTilt.mode = static_cast<int>(mode);
+
+    PanTilt.ball_x = 0;
+    PanTilt.ball_y = 0;
+
+    pan_tilt_pub_->publish(PanTilt);
+    break;
+  }
+  case Mode::BALL_NO:
+  {
+    PanTilt.mode = static_cast<int>(mode);
+
+    PanTilt.ball_x = ball_cam_X;
+    PanTilt.ball_y = ball_cam_Y;
+
+    pan_tilt_pub_->publish(PanTilt);
+    break;
+  }
+  case Mode::BALL_YES:
+  {
+    PanTilt.mode = static_cast<int>(mode);
+
+    PanTilt.ball_x = ball_cam_X;
+    PanTilt.ball_y = ball_cam_Y;
+
+    pan_tilt_pub_->publish(PanTilt);
+    break;
+  }
+  }
 }
 
 void RefinerNode::timerCallback()
@@ -71,24 +105,21 @@ void RefinerNode::timerCallback()
   // PURPOSE : 이동평균 필터를 적용하여 캠의 오차 값을 보정하고 이동중인 물체를 포착
   if (filter_cnt >= 9)
   {
-    // 해당 함수는 100ms마다 실행되고 총 10번 실행시 fps계산
-    RCLCPP_INFO(this->get_logger(), "fps_cnt : %d, nice_cnt : %d", fps_cnt, nice_cnt);
-    fps_cnt = 0;
-    filter_cnt = 0;
-    nice_cnt = 0;
 
-    if (count == 2)
+    if (nice_cnt > 0)
     {
-      PanTilt.mode = count;
-      pan_tilt_pub_->publish(PanTilt);
-      // count = 0;
+      mode = Mode::BALL_YES;
     }
     else
     {
-      PanTilt.mode = count;
-      pan_tilt_pub_->publish(PanTilt);
-      // count += 1;
+      mode = Mode::BALL_NO;
     }
+    pan_tilt_publish();
+
+    // 해당 함수는 100ms마다 실행되고 총 10번 실행시 fps계산
+    RCLCPP_INFO(this->get_logger(), "nice_cnt : %d", nice_cnt);
+    filter_cnt = 0;
+    nice_cnt = 0;
   }
   if (fst_filter_cnt != 0)
   {
@@ -147,7 +178,8 @@ void RefinerNode::timerCallback()
 
 void RefinerNode::pan_tilt_Callback(const robocup_vision::msg::PanTiltMsgs::SharedPtr msg)
 {
-  tilt_deg = msg->tilt;
+  pan_tilt.ptpos.TILT_POSITION = msg->tilt_deg;
+  pan_tilt.ptpos.PAN_POSITION = msg->pan_deg;
 }
 
 void RefinerNode::publish_localization_msg()

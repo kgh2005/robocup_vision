@@ -8,7 +8,10 @@
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/opencv.hpp>
 
+#include <vector>
+
 #include "robocup_vision/msg/bounding_box.hpp"
+
 
 // 클래스별 confidence threshold 설정
 const std::map<int, float> CONFIDENCE_THRESHOLDS = {
@@ -23,8 +26,19 @@ const std::map<int, cv::Scalar> COLORS = {
     {0, cv::Scalar(0, 0, 255)},   // 빨간색
     {1, cv::Scalar(0, 255, 0)},   // 초록색
     {2, cv::Scalar(0, 255, 255)}, // 노란색
-    {3, cv::Scalar(255, 0, 0)},   // 파란색s
+    {3, cv::Scalar(255, 0, 0)},   // 파란색
 };
+
+struct DetectionResult
+{
+  int class_id;
+  float score;
+  int x1;
+  int y1;
+  int x2;
+  int y2;
+};
+
 
 class DetectionNode : public rclcpp::Node
 {
@@ -35,6 +49,13 @@ private:
   cv::Mat bgr_image;
 
   int flag = 1;
+
+  double ball_best_confidence = 0.0;
+
+  std::vector<DetectionResult> Detections_ball_;
+
+  // int ball_class_id = 0; float ball_confidence = 0.0; 
+  // int ball_x1 = 0; int ball_y1 = 0; int ball_x2 = 0; int ball_x2 = 0;
 
 
   // OpenVINO 엔진

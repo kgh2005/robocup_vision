@@ -34,17 +34,9 @@ struct PAN_TILT
   double target_absy;
   struct
   {
-    double PAN_POSITION = 0;    // 팬 각도
-    double TILT_POSITION = -45; // 틸트 각도
+    double PAN_POSITION;  // 팬 각도
+    double TILT_POSITION; // 틸트 각도
   } ptpos;
-};
-
-// 클래스별 바운딩 박스 색상 설정 (BGR)
-const std::map<int, cv::Scalar> COLORS = {
-    {0, cv::Scalar(0, 0, 255)},   // 빨간색
-    {1, cv::Scalar(0, 255, 0)},   // 초록색
-    {2, cv::Scalar(0, 255, 255)}, // 노란색
-    {3, cv::Scalar(255, 0, 0)},   // 파란색
 };
 
 class RefinerNode : public rclcpp::Node
@@ -64,7 +56,6 @@ private:
 
   // ===== timer =====
   int filter_cnt = 0;
-  int fps_cnt = 0;
   int nice_cnt = 0;
   double fst_filter_x = 0, fst_filter_y = 0;
   int fst_filter_cnt = 0;
@@ -97,15 +88,22 @@ private:
   int robot_absy = 0;
   // ==========
 
-  int tilt_deg = 90;
   int remove_space_dis = 3000;
 
   // ===== 삼각측량법 =====
   int ROBOT_HEIGHT;
   int TILT_L;
-  int TILT_D;
   // ==========
-  int count = 0;
+
+  enum class Mode : int
+  {
+    INIT = 0,
+    BALL_NO = 1,
+    BALL_YES = 2,
+  };
+  Mode mode = Mode::INIT;
+
+
   int flag = 1;
   // ==========
   std::vector<cv::Point2f> ball_pts;
@@ -146,6 +144,8 @@ private:
   // ==========
   void publish_vision_msg();
   void publish_localization_msg();
+
+  void pan_tilt_publish();
 
   // ===== timer =====
   rclcpp::TimerBase::SharedPtr timer_;

@@ -124,18 +124,53 @@ void DetectionNode::imageProcessing()
       continue;
     }
 
-    // 저장
-    bbox.class_ids.push_back(class_id);
-    bbox.score.push_back(confidence);
-    bbox.x1.push_back(bx1);
-    bbox.y1.push_back(by1);
-    bbox.x2.push_back(bx2);
-    bbox.y2.push_back(by2);
-    // 시각화
-    cv::Point pt1(bx1, by1);
-    cv::Point pt2(bx2, by2);
+    if (class_id == 0 && ball_best_confidence < confidence)
+    {
+      // 공 바운딩 박스 중에서 가장 높은 confidence 저장
+      Detections_ball_.clear();
+      DetectionResult det_ball;
+      det_ball.class_id = class_id;
+      det_ball.score = confidence;
+      det_ball.x1 = bx1;
+      det_ball.y1 = by1;
+      det_ball.x2 = bx2;
+      det_ball.y2 = by2;
+      Detections_ball_.push_back(det_ball);
+      ball_best_confidence = confidence;
+    }
+    else if (class_id != 0)
+    {
+      // 저장
+      bbox.class_ids.push_back(class_id);
+      bbox.score.push_back(confidence);
+      bbox.x1.push_back(bx1);
+      bbox.y1.push_back(by1);
+      bbox.x2.push_back(bx2);
+      bbox.y2.push_back(by2);
+      // 시각화
+      cv::Point pt1(bx1, by1);
+      cv::Point pt2(bx2, by2);
 
-    cv::rectangle(bgr_image, cv::Rect(pt1, pt2), COLORS.at(class_id), 2);
+      cv::rectangle(bgr_image, cv::Rect(pt1, pt2), COLORS.at(class_id), 2);
+    }
+  }
+
+  if (!Detections_ball_.empty())
+  {
+    bbox.class_ids.push_back(Detections_ball_[0].class_id);
+    bbox.score.push_back(Detections_ball_[0].score);
+    bbox.x1.push_back(Detections_ball_[0].x1);
+    bbox.y1.push_back(Detections_ball_[0].y1);
+    bbox.x2.push_back(Detections_ball_[0].x2);
+    bbox.y2.push_back(Detections_ball_[0].y2);
+
+    // 시각화
+    cv::Point pt1(Detections_ball_[0].x1, Detections_ball_[0].y1);
+    cv::Point pt2(Detections_ball_[0].x2, Detections_ball_[0].y2);
+    cv::rectangle(bgr_image, cv::Rect(pt1, pt2), COLORS.at(Detections_ball_[0].class_id), 2);
+
+    Detections_ball_.clear();
+    ball_best_confidence = 0.0;
   }
 
   bbox_pub_->publish(bbox);
