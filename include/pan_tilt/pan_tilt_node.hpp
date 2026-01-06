@@ -33,8 +33,8 @@ private:
   TiltState tilt_state = TiltState::DOWN;
 
   // === tracking params ===
-  int img_w_ = 640;
-  int img_h_ = 480;
+  int img_w_ = 1280;
+  int img_h_ = 960;
 
   int roi_w_ = 200; // 중앙 ROI 가로(px)
   int roi_h_ = 150; // 중앙 ROI 세로(px)
