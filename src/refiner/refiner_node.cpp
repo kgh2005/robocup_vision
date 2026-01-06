@@ -19,8 +19,10 @@ RefinerNode::RefinerNode() : Node("refiner_node")
   // image_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
   //     "/camera1/camera/compressed_image", rclcpp::SensorDataQoS().keep_last(1).best_effort(),
   //     std::bind(&RefinerNode::imageCallback, this, std::placeholders::_1));
+
+  // compressed_info
   camera_info_sub_ = this->create_subscription<sensor_msgs::msg::CameraInfo>(
-      "/camera1/compressed_info", 100,
+      "/camera1/info", 100,
       [this](const sensor_msgs::msg::CameraInfo::SharedPtr msg)
       {
         K_M = cv::Mat(3, 3, CV_64F, (void *)msg->k.data()).clone();
@@ -178,8 +180,11 @@ void RefinerNode::timerCallback()
 
 void RefinerNode::pan_tilt_Callback(const robocup_vision::msg::PanTiltMsgs::SharedPtr msg)
 {
+  pan_tilt.ptpos.PAN_POSITION  = -msg->pan_deg * DEG2RAD;   // -180~180
   pan_tilt.ptpos.TILT_POSITION = msg->tilt_deg;
-  pan_tilt.ptpos.PAN_POSITION = msg->pan_deg;
+
+  RCLCPP_INFO(this->get_logger(), "Pan_Tilt Callback - Pan: %.2f, Tilt: %.2f", pan_tilt.ptpos.PAN_POSITION, pan_tilt.ptpos.TILT_POSITION);
+
 }
 
 void RefinerNode::publish_localization_msg()
@@ -270,8 +275,8 @@ void RefinerNode::bboxProcessing()
     pan_tilt.target_y = ballPos.dist * cos(ballPos.theta * M_PI / 180);
 
     // 로봇 기준 절대 좌표로 변환
-    pan_tilt.target_absx = pan_tilt.target_x * cos((-1) * pan_tilt.ptpos.PAN_POSITION * M_PI / 180) - pan_tilt.target_y * sin((-1) * pan_tilt.ptpos.PAN_POSITION * M_PI / 180);
-    pan_tilt.target_absy = pan_tilt.target_x * sin((-1) * pan_tilt.ptpos.PAN_POSITION * M_PI / 180) + pan_tilt.target_y * cos((-1) * pan_tilt.ptpos.PAN_POSITION * M_PI / 180);
+    pan_tilt.target_absx = pan_tilt.target_x * cos((-1) * pan_tilt.ptpos.PAN_POSITION) - pan_tilt.target_y * sin((-1) * pan_tilt.ptpos.PAN_POSITION);
+    pan_tilt.target_absy = pan_tilt.target_x * sin((-1) * pan_tilt.ptpos.PAN_POSITION) + pan_tilt.target_y * cos((-1) * pan_tilt.ptpos.PAN_POSITION);
 
     if (ball_filter_cnt < 30)
     {
@@ -373,8 +378,8 @@ void RefinerNode::bboxProcessing()
       double robot_x = robotPos.dist * sin(robotPos.theta * M_PI / 180);
       double robot_y = robotPos.dist * cos(robotPos.theta * M_PI / 180);
 
-      robot_absx = robot_x * cos((-1) * pan_tilt.ptpos.PAN_POSITION * M_PI / 180) - robot_y * sin((-1) * pan_tilt.ptpos.PAN_POSITION * M_PI / 180);
-      robot_absy = robot_x * sin((-1) * pan_tilt.ptpos.PAN_POSITION * M_PI / 180) + robot_y * cos((-1) * pan_tilt.ptpos.PAN_POSITION * M_PI / 180);
+      robot_absx = robot_x * cos((-1) * pan_tilt.ptpos.PAN_POSITION ) - robot_y * sin((-1) * pan_tilt.ptpos.PAN_POSITION);
+      robot_absy = robot_x * sin((-1) * pan_tilt.ptpos.PAN_POSITION ) + robot_y * cos((-1) * pan_tilt.ptpos.PAN_POSITION);
 
       // visionMsg의 로봇 벡터 컨테이너에 데이터 저장
       visionMsg.robot_vec_x.push_back(robot_absx);
@@ -429,8 +434,8 @@ void RefinerNode::bboxProcessing()
       double line_x = line_Pos.dist * sin(line_Pos.theta * M_PI / 180);
       double line_y = line_Pos.dist * cos(line_Pos.theta * M_PI / 180);
 
-      double line_absx = line_x * cos((-1) * pan_tilt.ptpos.PAN_POSITION * M_PI / 180) - line_y * sin((-1) * pan_tilt.ptpos.PAN_POSITION * M_PI / 180);
-      double line_absy = line_x * sin((-1) * pan_tilt.ptpos.PAN_POSITION * M_PI / 180) + line_y * cos((-1) * pan_tilt.ptpos.PAN_POSITION * M_PI / 180);
+      double line_absx = line_x * cos((-1) * pan_tilt.ptpos.PAN_POSITION) - line_y * sin((-1) * pan_tilt.ptpos.PAN_POSITION);
+      double line_absy = line_x * sin((-1) * pan_tilt.ptpos.PAN_POSITION) + line_y * cos((-1) * pan_tilt.ptpos.PAN_POSITION);
 
       // 일정 거리 이상에 존재하는 특징점은 예외 처리
       if (line_Pos.dist < remove_space_dis)
@@ -459,8 +464,6 @@ void RefinerNode::bboxCallback(const robocup_vision::msg::BoundingBox::SharedPtr
   Detections_robot_.clear();
   Detections_line_.clear();
 
-  ball_most_confidence = 0;
-
   size_t num_boxes = msg->class_ids.size();
 
   for (size_t i = 0; i < num_boxes; i++)
@@ -472,12 +475,7 @@ void RefinerNode::bboxCallback(const robocup_vision::msg::BoundingBox::SharedPtr
 
     if (det.class_id == 0)
     {
-      if (ball_most_confidence < det.score)
-      {
-        Detections_ball_.clear();
-        Detections_ball_.push_back(det);
-        ball_most_confidence = det.score;
-      }
+      Detections_ball_.push_back(det);
     }
     else if (det.class_id == 1)
     {
@@ -489,10 +487,7 @@ void RefinerNode::bboxCallback(const robocup_vision::msg::BoundingBox::SharedPtr
     }
   }
 
-  if (num_boxes != 0)
-  {
-    bboxProcessing();
-  }
+  bboxProcessing();
 }
 
 // void RefinerNode::imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr msg)

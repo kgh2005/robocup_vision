@@ -70,7 +70,6 @@ private:
 
   // ===== Ball =====
   cv::Rect remove_rect{0, 0, 0, 0};
-  int ball_most_confidence = 0;
   int ball_cam_X = 0;
   int ball_cam_Y = 0;
   int ball_filter_x[30] = {

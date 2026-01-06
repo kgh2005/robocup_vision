@@ -38,10 +38,11 @@ void PanTiltNode::pan_tilt_mode()
   case 0: // init
   {
     pan_Pos_ = 0;
-    tilt_Pos_ = (-1) * 36000 * 5;
+    tilt_Pos_ = (-1) * INST_PER_DEG * 50;
 
     pan_deg = 0;
-    tilt_deg = 50;
+    tilt_deg = -50;
+
     pan_tilt_publish();
     break;
   }
@@ -60,13 +61,12 @@ void PanTiltNode::pan_tilt_mode()
         // ==================================
         pan_count += 1;
 
-        pan_Pos_ = pan[pan_count] / 10 * 36000;
-        tilt_Pos_ = tilt[tilt_count] / 10 * 36000;
+        pan_Pos_ = pan[pan_count] * INST_PER_DEG;
+        tilt_Pos_ = tilt[tilt_count] * INST_PER_DEG;
 
         pan_deg = pan[pan_count];
         tilt_deg = tilt[tilt_count];
         // ==================================
-
       }
       else
       {
@@ -77,8 +77,8 @@ void PanTiltNode::pan_tilt_mode()
         // ==================================
         pan_count -= 1;
 
-        pan_Pos_ = pan[pan_count] / 10 * 36000;
-        tilt_Pos_ = tilt[tilt_count] / 10 * 36000;
+        pan_Pos_ = pan[pan_count] * INST_PER_DEG;
+        tilt_Pos_ = tilt[tilt_count] * INST_PER_DEG;
 
         pan_deg = pan[pan_count];
         tilt_deg = tilt[tilt_count];
@@ -93,13 +93,13 @@ void PanTiltNode::pan_tilt_mode()
       if (pan_count >= 1)
       {
         tilt_count = 1;
-        
+
         // 먼저 실행
         // ==================================
         pan_count -= 1;
 
-        pan_Pos_ = pan[pan_count] / 10 * 36000;
-        tilt_Pos_ = tilt[tilt_count] / 10 * 36000;
+        pan_Pos_ = pan[pan_count] * INST_PER_DEG;
+        tilt_Pos_ = tilt[tilt_count] * INST_PER_DEG;
 
         pan_deg = pan[pan_count];
         tilt_deg = tilt[tilt_count];
@@ -114,8 +114,8 @@ void PanTiltNode::pan_tilt_mode()
         // ==================================
         pan_count += 1;
 
-        pan_Pos_ = pan[pan_count] / 10 * 36000;
-        tilt_Pos_ = tilt[tilt_count] / 10 * 36000;
+        pan_Pos_ = pan[pan_count] * INST_PER_DEG;
+        tilt_Pos_ = tilt[tilt_count] * INST_PER_DEG;
 
         pan_deg = pan[pan_count];
         tilt_deg = tilt[tilt_count];
@@ -132,18 +132,21 @@ void PanTiltNode::pan_tilt_mode()
 
   case 2: // yes ball
   {
-    if (pan_count >= 2)
-    {
-      pan_count = 2;
-    }
-    if (pan_count <= 0)
-    {
-      pan_count = 0;
-    }
-    pan_Pos_ = pan[pan_count] / 10 * 36000;
-    tilt_Pos_ = tilt[tilt_count] / 10 * 36000;
+    // if (pan_count >= 2)
+    // {
+    //   pan_count = 2;
+    // }
+    // if (pan_count <= 0)
+    // {
+    //   pan_count = 0;
+    // }
+    // pan_Pos_ = pan[pan_count] / 10 * 36000;
+    // tilt_Pos_ = tilt[tilt_count] / 10 * 36000;
 
-    pan_tilt_publish();
+    // pan_tilt_publish();
+    // break;
+
+    track_ball_roi(ball_cam_X, ball_cam_Y);
     break;
   }
 
@@ -151,6 +154,51 @@ void PanTiltNode::pan_tilt_mode()
     RCLCPP_ERROR(this->get_logger(), "===== Pan_Tilt ERROR!! =====");
     break;
   }
+}
+
+void PanTiltNode::track_ball_roi(int bx, int by)
+{
+  // 유효성 체크
+  if (bx < 0 || by < 0 || bx >= img_w_ || by >= img_h_)
+    return;
+
+  const int cx = img_w_ / 2; // 320
+  const int cy = img_h_ / 2; // 240
+
+  const int x0 = cx - roi_w_ / 2;
+  const int x1 = cx + roi_w_ / 2;
+  const int y0 = cy - roi_h_ / 2;
+  const int y1 = cy + roi_h_ / 2;
+
+  // ROI 안이면 유지(움직이지 않음)
+  if (bx >= x0 && bx <= x1 && by >= y0 && by <= y1)
+    return;
+
+  // 픽셀 오차 (오른쪽/아래쪽이면 +)
+  double err_x = static_cast<double>(bx - cx);
+  double err_y = static_cast<double>(by - cy);
+
+  // P 제어 (픽셀 -> 도)
+  double d_pan = pan_sign_ * kp_pan_ * err_x;
+  double d_tilt = tilt_sign_ * kp_tilt_ * err_y;
+
+  // 스텝 제한
+  d_pan = std::clamp(d_pan, -max_step_deg_, max_step_deg_);
+  d_tilt = std::clamp(d_tilt, -max_step_deg_, max_step_deg_);
+
+  // 누적 업데이트
+  pan_deg += d_pan;
+  tilt_deg += d_tilt;
+
+  // 한계 제한
+  pan_deg = std::clamp(pan_deg, pan_min_deg_, pan_max_deg_);
+  tilt_deg = std::clamp(tilt_deg, tilt_min_deg_, tilt_max_deg_);
+
+  // 인스타 단위 변환
+  pan_Pos_ = static_cast<int>(std::round(pan_deg * INST_PER_DEG));
+  tilt_Pos_ = static_cast<int>(std::round(-tilt_deg * INST_PER_DEG));
+
+  pan_tilt_publish();
 }
 
 void PanTiltNode::pan_tilt_Callback(const robocup_vision::msg::PanTilt::SharedPtr msg)
