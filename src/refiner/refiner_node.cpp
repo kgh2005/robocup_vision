@@ -479,11 +479,11 @@ void RefinerNode::bboxCallback(const robocup_vision::msg::BoundingBox::SharedPtr
     }
     else if (det.class_id == 1)
     {
-      Detections_robot_.push_back(det);
+      Detections_line_.push_back(det);
     }
     else if (det.class_id == 2)
     {
-      Detections_line_.push_back(det);
+      Detections_robot_.push_back(det);
     }
   }
 

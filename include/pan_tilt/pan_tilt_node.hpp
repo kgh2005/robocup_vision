@@ -52,7 +52,7 @@ private:
 
   // 축 방향(한 번만 맞추면 됨)
   double pan_sign_ = 1.0;
-  double tilt_sign_ = 1.0;
+  double tilt_sign_ = -1.0;
 
   // ===== ROS 통신 =====
   rclcpp::Subscription<robocup_vision::msg::PanTilt>::SharedPtr pan_tilt_sub_;

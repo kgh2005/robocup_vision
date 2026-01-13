@@ -196,7 +196,7 @@ void PanTiltNode::track_ball_roi(int bx, int by)
 
   // 인스타 단위 변환
   pan_Pos_ = static_cast<int>(std::round(pan_deg * INST_PER_DEG));
-  tilt_Pos_ = static_cast<int>(std::round(-tilt_deg * INST_PER_DEG));
+  tilt_Pos_ = static_cast<int>(std::round(tilt_deg * INST_PER_DEG));
 
   pan_tilt_publish();
 }
