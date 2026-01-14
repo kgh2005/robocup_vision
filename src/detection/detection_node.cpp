@@ -21,7 +21,7 @@ DetectionNode::DetectionNode() : Node("detection_node")
   }
   bbox_pub_ = this->create_publisher<robocup_vision::msg::BoundingBox>("/Bounding_box", 10);
   image_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
-      "/camera1/camera/image_raw", 10, // image_raw, compressed_image
+      "/camera1/camera/compressed_image", 10, // image_raw, compressed_image
       std::bind(&DetectionNode::imageCallback, this, std::placeholders::_1));
 }
 
@@ -182,15 +182,14 @@ void DetectionNode::imageProcessing()
 
 void DetectionNode::imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr msg)
 {
+  if (!flag) return;
+
+  flag = 0;
   try
   {
     bgr_image = cv_bridge::toCvShare(msg, "bgr8")->image.clone();
 
-    if (flag)
-    {
-      flag = 0;
-      imageProcessing();
-    }
+    imageProcessing();
   }
   catch (const cv_bridge::Exception &e)
   {

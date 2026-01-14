@@ -5,16 +5,11 @@ RefinerNode::RefinerNode() : Node("refiner_node")
   visionPub = this->create_publisher<humanoid_interfaces::msg::Robocupvision25>("vision", 10);
   vision_feature_Pub = this->create_publisher<humanoid_interfaces::msg::Robocupvision25feature>("vision_feature", 10);
   pan_tilt_pub_ = this->create_publisher<robocup_vision::msg::PanTilt>("/PanTilt", 10);
-  visionSub =
-      this->create_subscription<humanoid_interfaces::msg::Master2vision25>(
-          "master2vision", 10,
-          std::bind(&RefinerNode::master_callback, this,
-                    std::placeholders::_1));
   bbox_sub_ = this->create_subscription<robocup_vision::msg::BoundingBox>(
       "/Bounding_box", rclcpp::SensorDataQoS().keep_last(1).best_effort(),
       std::bind(&RefinerNode::bboxCallback, this, std::placeholders::_1));
   pan_tilt_sub_ = this->create_subscription<robocup_vision::msg::PanTiltMsgs>(
-      "/camera1/pan_tilt", 100,
+      "/camera1/pan_tilt", rclcpp::SensorDataQoS().keep_last(1).best_effort(),
       std::bind(&RefinerNode::pan_tilt_Callback, this, std::placeholders::_1));
   // image_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
   //     "/camera1/camera/compressed_image", rclcpp::SensorDataQoS().keep_last(1).best_effort(),
@@ -460,6 +455,10 @@ void RefinerNode::bboxProcessing()
 
 void RefinerNode::bboxCallback(const robocup_vision::msg::BoundingBox::SharedPtr msg)
 {
+  if (!flag) return;
+
+  flag = 0;
+
   Detections_ball_.clear();
   Detections_robot_.clear();
   Detections_line_.clear();
@@ -488,28 +487,6 @@ void RefinerNode::bboxCallback(const robocup_vision::msg::BoundingBox::SharedPtr
   }
 
   bboxProcessing();
-}
-
-// void RefinerNode::imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr msg)
-// {
-//   try
-//   {
-//     // bgr_image = cv_bridge::toCvShare(msg, "bgr8")->image.clone();
-//     // bboxProcessing();
-//     fps_cnt += 1;
-//   }
-//   catch (const cv_bridge::Exception &e)
-//   {
-//     RCLCPP_ERROR(get_logger(), "cv_bridge exception: %s", e.what());
-//   }
-// }
-
-void RefinerNode::master_callback(const humanoid_interfaces::msg::Master2vision25::SharedPtr msg)
-{
-  // if (scan_value == 4) {
-  //   pan_tilt.ptpos.PAN_POSITION = msg->pan;
-  //   pan_tilt.ptpos.TILT_POSITION = TILT_D;
-  // }
 }
 
 int main(int argc, char **argv)
